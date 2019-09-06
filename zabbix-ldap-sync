@@ -33,6 +33,7 @@ import warnings
 import traceback
 import sys
 import os
+import logging
 from docopt import docopt
 
 rundir = os.path.realpath(os.path.dirname(sys.argv[0]))
@@ -77,6 +78,9 @@ Options:
 
     config.verbose = args['--verbose']
     config.dryrun = args['--dryrun']
+
+    level = logging.DEBUG if config.verbose else logging.INFO
+    logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
 
     ldap_conn = LDAPConn(config)
 
