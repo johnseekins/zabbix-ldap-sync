@@ -6,6 +6,8 @@ import re
 
 from pyzabbix import ZabbixAPI, ZabbixAPIException
 
+# Fake Zabbix group ID for missing groups "added" in dry run mode.
+FAKE_ZABBIX_GROUP_ID = -1
 
 class ZabbixConn(object):
     """
@@ -29,6 +31,7 @@ class ZabbixConn(object):
         self.deleteorphans = config.zbx_deleteorphans
         self.media_description = config.media_description
         self.user_opt = config.user_opt
+        self.fake_groups = frozenset()
         if self.nocheckcertificate:
             from requests.packages.urllib3 import disable_warnings
             disable_warnings()
@@ -142,6 +145,9 @@ class ZabbixConn(object):
             A list of the Zabbix users for the specified group id
 
         """
+        if groupid == FAKE_ZABBIX_GROUP_ID:
+            return list()
+
         result = self.conn.user.get(output='extend', usrgrpids=groupid)
 
         users = [user['alias'] for user in result]
@@ -294,6 +300,9 @@ class ZabbixConn(object):
             if not self.dryrun:
                 grpid = self.create_group(eachGroup)
                 self.logger.info('Group %s created with groupid %s' % (eachGroup, grpid))
+        
+        if self.dryrun:
+            self.fake_groups = missing_groups
 
     def convert_severity(self, severity):
 
@@ -346,7 +355,10 @@ class ZabbixConn(object):
             if not ldap_users and not self.deleteorphans:
                 continue
 
-            zabbix_grpid = [g['usrgrpid'] for g in self.get_groups() if g['name'] == eachGroup].pop()
+            if eachGroup in self.fake_groups:
+                zabbix_grpid = FAKE_ZABBIX_GROUP_ID
+            else:
+                zabbix_grpid = [g['usrgrpid'] for g in self.get_groups() if g['name'] == eachGroup].pop()
 
             zabbix_group_users = self.get_group_members(zabbix_grpid)
 
