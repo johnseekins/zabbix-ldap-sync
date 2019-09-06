@@ -4,7 +4,7 @@ The *zabbix-ldap-sync* script is used for keeping your Zabbix users in sync with
 
 It can automatically import existing LDAP groups and users into Zabbix, thus making it easy for you to keep your Zabbix users in sync with LDAP.
 
-Maintained by Marc Schöchlin <ms@256bit.org>
+Maintained by Marc Schöchlin <ms@256bit.org>. This fork maintained by Alex Parrill <aparrill@datto.com>.
 
 This project moved to https://github.com/zabbix-tooling/zabbix-ldap-sync to ease collaboration of developers.
 You can switchover your current git clone byexecuting the follwing command:
@@ -13,28 +13,26 @@ git remote set-url origin git@github.com:zabbix-tooling/zabbix-ldap-sync.git # o
 git remote set-url origin https://github.com/zabbix-tooling/zabbix-ldap-sync.git
 ```
 
+## Installation
+
+To install, run `pip3 install .`.
+
+You can also run out of the source tree via `python3 -m zabbix_ldap_sync`, but you'll need to install
+the dependencies manually or use `pipenv`.
+
 ## Requirements
 
 * Python 3.x.x
 * [pyldap](https://pypi.python.org/pypi/pyldap/)
 * [pyzabbix](https://github.com/lukecyca/pyzabbix)
 * [docopt](https://github.com/docopt/docopt)
-* Zabbix 3.4, 4.0 (not extensively tested) 
+* Zabbix 3.4, 4.0 (not extensively tested)
 
 You also need to have your Zabbix Frontend configured to authenticate against an AD/LDAP directory server.
 (using http or ldap-auth)
 
 Check the official documentation of Zabbix on how to 
 [configure Zabbix to authenticate against an AD/LDAP directory server](https://www.zabbix.com/documentation/2.2/manual/web_interface/frontend_sections/administration/authentication).
-
-### Setup virtualenv
-
-```
-apt-get install python-dev virtualenv libpython3.*-dev libldap2-dev libsasl2-dev
-virtualenv -p python3 venv
-source venv/bin/activate
-pip install -r requirements.txt
-```
 
 ## Configuration
 
@@ -170,13 +168,13 @@ onlycreate = true
 
 Now that we have the above mentioned configuration file created, let's import our groups and users from LDAP to Zabbix.
 
-	$ ./zabbix-ldap-sync -f /path/to/zabbix-ldap.conf
+	$ zabbix-ldap-sync -f /path/to/zabbix-ldap.conf
 	
 Once the script completes, check your Zabbix Frontend to verify that users are successfully imported.
 
 To sync different LDAP groups with different options, create separate config file for each group and run `zabbix-ldap-sync`:
 
-	$ ./zabbix-ldap-sync -f /path/to/zabbix-ldap-admins.conf
-	$ ./zabbix-ldap-sync -f /path/to/zabbix-ldap-users.conf
+	$ zabbix-ldap-sync -f /path/to/zabbix-ldap-admins.conf
+	$ zabbix-ldap-sync -f /path/to/zabbix-ldap-users.conf
 
 You would generally be running the above scripts on regular basis, say each day from `cron(8)` in order to make sure your Zabbix system is in sync with LDAP.

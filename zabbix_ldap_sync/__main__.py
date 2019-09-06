@@ -36,12 +36,9 @@ import os
 import logging
 from docopt import docopt
 
-rundir = os.path.realpath(os.path.dirname(sys.argv[0]))
-sys.path.append(rundir + "/lib/")
-
-from zabbixldapconf import ZabbixLDAPConf
-from zabbixconn import ZabbixConn
-from ldapconn import LDAPConn
+from .zabbixldapconf import ZabbixLDAPConf
+from .zabbixconn import ZabbixConn
+from .ldapconn import LDAPConn
 
 
 def main():
