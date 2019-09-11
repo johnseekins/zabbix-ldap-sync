@@ -17,6 +17,5 @@ setup(
 	install_requires=[
 		"pyldap",
 		"pyzabbix",
-		"docopt",
 	]
 )

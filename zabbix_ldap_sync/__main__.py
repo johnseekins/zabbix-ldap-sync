@@ -34,7 +34,7 @@ import traceback
 import sys
 import os
 import logging
-from docopt import docopt
+import argparse
 
 from .zabbixldapconf import ZabbixLDAPConf
 from .zabbixconn import ZabbixConn
@@ -42,39 +42,42 @@ from .ldapconn import LDAPConn
 
 
 def main():
-    usage = """
-Usage: zabbix-ldap-sync [-lsrwdn] [--verbose] [--dryrun] -f <config>
-       zabbix-ldap-sync -v
-       zabbix-ldap-sync -h
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.1.1",
+        help="Display version and exit")
+    parser.add_argument("-l", "--lowercase", action="store_true",
+        help="Create AD user names as lowercase")
+    parser.add_argument("-s", "--skip-disabled", action="store_true",
+        help="Skip disabled AD users")
+    parser.add_argument("-r", "--recursive", action="store_true",
+        help="Resolves AD group members recursively (i.e. nested groups)")
+    parser.add_argument("-w", "--wildcard-search", action="store_true",
+        help="Search AD group with wildcard (e.g. R.*.Zabbix.*) - TESTED ONLY with Active Directory")
+    parser.add_argument("-d", "--delete-orphans", action="store_true",
+        help="Delete Zabbix users that don't exist in a LDAP group")
+    parser.add_argument("-n", "--no-check-certificate", action="store_true",
+        help="Don't check Zabbix server certificate")
+    parser.add_argument("--verbose", action="store_true",
+        help="Print debug message from ZabbixAPI")
+    parser.add_argument("--dryrun", action="store_true",
+        help="Just simulate zabbix interaction")
+    parser.add_argument("-f", "--file", required=True,
+        help="Configuration file to use")
 
-Options:
-  -h, --help                    Display this usage info
-  -v, --version                 Display version and exit
-  -l, --lowercase               Create AD user names as lowercase
-  -s, --skip-disabled           Skip disabled AD users
-  -r, --recursive               Resolves AD group members recursively (i.e. nested groups)
-  -w, --wildcard-search         Search AD group with wildcard (e.g. R.*.Zabbix.*) - TESTED ONLY with Active Directory
-  -d, --delete-orphans          Delete Zabbix users that don't exist in a LDAP group
-  -n, --no-check-certificate    Don't check Zabbix server certificate
-  --verbose                     Print debug message from ZabbixAPI
-  --dryrun                      Just simulate zabbix interaction
-  -f <config>, --file <config>  Configuration file to use
+    args = parser.parse_args()
 
-"""
-    args = docopt(usage, version="0.1.1")
+    config = ZabbixLDAPConf(args.file)
 
-    config = ZabbixLDAPConf(args['--file'])
+    config.zbx_lowercase = args.lowercase
+    config.zbx_skipdisabled = args.skip_disabled
+    config.zbx_deleteorphans = args.delete_orphans
+    config.zbx_nocheckcertificate = args.no_check_certificate
 
-    config.zbx_lowercase = args['--lowercase']
-    config.zbx_skipdisabled = args['--skip-disabled']
-    config.zbx_deleteorphans = args['--delete-orphans']
-    config.zbx_nocheckcertificate = args['--no-check-certificate']
+    config.ldap_recursive = args.recursive
+    config.ldap_wildcard_search = args.wildcard_search
 
-    config.ldap_recursive = args['--recursive']
-    config.ldap_wildcard_search = args['--wildcard-search']
-
-    config.verbose = args['--verbose']
-    config.dryrun = args['--dryrun']
+    config.verbose = args.verbose
+    config.dryrun = args.dryrun
 
     level = logging.DEBUG if config.verbose else logging.INFO
     logging.basicConfig(level=level, format="%(asctime)s - %(levelname)s - %(message)s")
