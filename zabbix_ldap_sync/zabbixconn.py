@@ -345,15 +345,15 @@ class ZabbixConn(object):
         # Lowercase list of user
         zabbix_all_users = [x.lower() for x in zabbix_all_users]
 
+        seen_zabbix_users = set()
+        seen_ldap_users = set()
+        users_to_update_media_of = dict()
+
         for eachGroup in self.ldap_groups:
 
             ldap_users = self.ldap_conn.get_group_members(eachGroup)
             # Lowercase list of users
             ldap_users = {k.lower(): v for k,v in ldap_users.items()}
-
-            # Do nothing if LDAP group contains no users and "--delete-orphans" is not specified
-            if not ldap_users and not self.deleteorphans:
-                continue
 
             if eachGroup in self.fake_groups:
                 zabbix_grpid = FAKE_ZABBIX_GROUP_ID
@@ -362,7 +362,10 @@ class ZabbixConn(object):
 
             zabbix_group_users = self.get_group_members(zabbix_grpid)
 
-            missing_users = set(list(ldap_users.keys())) - set(zabbix_group_users)
+            seen_zabbix_users.update(zabbix_group_users)
+            seen_ldap_users.update(ldap_users.keys())
+
+            missing_users = set(ldap_users.keys()) - set(zabbix_group_users)
 
             # Add missing users
             for eachUser in missing_users:
@@ -390,19 +393,6 @@ class ZabbixConn(object):
                     if not self.dryrun:
                       self.update_user(eachUser, zabbix_grpid)
 
-            # Handle any extra users in the groups
-            extra_users = set(zabbix_group_users) - set(list(ldap_users.keys()))
-            if extra_users:
-                self.logger.info('Users in group %s which are not found in LDAP group:' % eachGroup)
-
-                for eachUser in extra_users:
-                    if self.deleteorphans:
-                        self.logger.info('Deleting user: "%s"' % eachUser)
-                        if not self.dryrun:
-                            self.delete_user(eachUser)
-                    else:
-                        self.logger.info('User not in ldap group "%s"' % eachUser)
-
             # update users media
             onlycreate = False
             media_opt_filtered = []
@@ -417,25 +407,35 @@ class ZabbixConn(object):
                     media_opt_filtered.append(elem)
 
             if onlycreate:
-                self.logger.info("Add media only on newly created users for group >>>%s<<<" % eachGroup)
-                zabbix_group_users = missing_users
+                media_users_set = missing_users
             else:
-                self.logger.info("Update media on all users for group >>>%s<<<" % eachGroup)
-                zabbix_group_users = self.get_group_members(zabbix_grpid)
+                media_users_set = self.get_group_members(zabbix_grpid)
 
-            for eachUser in set(zabbix_group_users):
-                eachUser = eachUser.lower()
+            for user in media_users_set:
+                if user.lower() in ldap_users:
+                    users_to_update_media_of[user] = ldap_users[user.lower()]
 
-                if self.ldap_media and eachUser in ldap_users:
-                    self.logger.info('>>> Updating/create user media for "%s", update "%s"' % (eachUser, self.media_description))
-                    if self.ldap_conn.get_user_media(ldap_users[eachUser], self.ldap_media):
-                        sendto = self.ldap_conn.get_user_media(ldap_users[eachUser], self.ldap_media).decode("utf8")
-                    else:
-                        sendto = self.ldap_conn.get_user_media(ldap_users[eachUser], self.ldap_media)
-
-                    if sendto and not self.dryrun:
-                        self.update_media(eachUser, self.media_description, sendto, media_opt_filtered)
+        # Handle any extra users in the groups
+        extra_users = seen_zabbix_users - seen_ldap_users
+        if extra_users:
+            for eachUser in extra_users:
+                if self.deleteorphans:
+                    self.logger.info('Deleting user: "%s"' % eachUser)
+                    if not self.dryrun:
+                        self.delete_user(eachUser)
                 else:
-                    self.logger.info('>>> Ignoring media for "%s" because of configuration' % (eachUser))
+                    self.logger.info('User not in any ldap group "%s"' % eachUser)
+
+        # Update media
+        if self.ldap_media:
+            for eachUser, ldapinfo in users_to_update_media_of.items():
+                sendto = self.ldap_conn.get_user_media(ldapinfo, self.ldap_media)
+                if isinstance(sendto, bytes):
+                    sendto = sendto.decode("utf-8")
+                self.logger.info('>>> Updating/create user media for "%s", set "%s" to "%s"', eachUser, self.media_description, sendto)
+                if sendto and not self.dryrun:
+                    self.update_media(eachUser, self.media_description, sendto, media_opt_filtered)
+        else:
+            self.logger.info('>>> Ignoring media because of configuration')
 
         self.ldap_conn.disconnect()
