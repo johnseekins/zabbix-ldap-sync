@@ -47,8 +47,6 @@ def main():
         help="Display version and exit")
     parser.add_argument("-l", "--lowercase", action="store_true",
         help="Create AD user names as lowercase")
-    parser.add_argument("-s", "--skip-disabled", action="store_true",
-        help="Skip disabled AD users")
     parser.add_argument("-r", "--recursive", action="store_true",
         help="Resolves AD group members recursively (i.e. nested groups)")
     parser.add_argument("-w", "--wildcard-search", action="store_true",
@@ -64,17 +62,29 @@ def main():
     parser.add_argument("-f", "--file", required=True,
         help="Configuration file to use")
 
+    disable_mode = parser.add_mutually_exclusive_group()
+    disable_mode.add_argument("-s", "--skip-disabled", action="store_const",
+        dest="disabled_mode", const="delete", default="disable",
+        help="Old version of `--disabled-mode remove-groups`")
+    disable_mode.add_argument("--disabled-mode", choices=["ignore", "remove-groups", "set-disabled"],
+        dest="disabled_mode", default="disable",
+        help="How to handle users disabled in LDAP/AD. `ignore` processes them as usual. `remove-groups` removes all of the managed groups from the user (which may cause them to be orphaned and deleted). `set-disabled` moves them to a disabled group.")
+
+    parser.add_argument("--deleted-mode", choices=["ignore", "remove-groups", "set-disabled"],
+        help="How to handle users that exist in Zabbix but not LDAP/AD. Choices and actions are the same as --disabled-mode")
+
     args = parser.parse_args()
 
     config = ZabbixLDAPConf(args.file)
 
     config.zbx_lowercase = args.lowercase
-    config.zbx_skipdisabled = args.skip_disabled
     config.zbx_deleteorphans = args.delete_orphans
     config.zbx_nocheckcertificate = args.no_check_certificate
 
     config.ldap_recursive = args.recursive
     config.ldap_wildcard_search = args.wildcard_search
+    config.ldap_disabledmode = args.disabled_mode
+    config.ldap_deletedmode = args.deleted_mode
 
     config.verbose = args.verbose
     config.dryrun = args.dryrun
@@ -87,8 +97,6 @@ def main():
     zabbix_conn = ZabbixConn(config, ldap_conn)
 
     zabbix_conn.connect()
-
-    zabbix_conn.create_missing_groups()
 
     zabbix_conn.sync_users()
 

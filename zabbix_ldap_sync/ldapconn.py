@@ -25,11 +25,12 @@ class LDAPConn(object):
         self.recursive = config.ldap_recursive
         if self.recursive and self.active_directory:
             self.memberof_filter = config.ldap_memberof_filter
-        self.skipdisabled = config.ldap_skipdisabled
+        self.disabledmode = config.ldap_disabledmode
         self.lowercase = config.ldap_lowercase
         self.user_filter = config.ldap_user_filter
         self.verbose = config.verbose
         self.openldap_type = config.openldap_type
+        self.disabled_filter = config.ad_filterdisabled
 
         self.logger = logging.getLogger()
         if self.verbose:
@@ -149,10 +150,7 @@ class LDAPConn(object):
 
             member_of_filter_dn = self.memberof_filter % result_dn
 
-            if self.skipdisabled:
-                filter = "(&%s%s%s)" % (self.user_filter, member_of_filter_dn, self.disabled_filter)
-            else:
-                filter = "(&%s%s)" % (self.user_filter, member_of_filter_dn)
+            filter = "(&%s%s)" % (self.user_filter, member_of_filter_dn)
 
             uid = self.conn.search_s(base=self.base,
                                      scope=ldap.SCOPE_SUBTREE,
@@ -164,10 +162,7 @@ class LDAPConn(object):
         else:
             # Otherwise, just get a DN for each user in the group
             for member in result_attrs[self.group_member_attribute]:
-                if self.skipdisabled:
-                    filter = "(&%s%s)" % (self.user_filter, self.disabled_filter)
-                else:
-                    filter = "(&%s)" % self.user_filter
+                filter = "(&%s)" % self.user_filter
 
                 uid = self.conn.search_s(base=member.decode('utf8'),
                                          scope=ldap.SCOPE_BASE,
@@ -239,7 +234,10 @@ class LDAPConn(object):
         if not mail:
             return None
 
-        return mail.pop()
+        mail = mail[0]
+        if isinstance(mail, bytes):
+            mail = mail.decode("utf-8")
+        return mail
 
     def get_user_sn(self, dn):
         """
@@ -268,14 +266,14 @@ class LDAPConn(object):
         if not sn:
             return None
 
-        return sn.pop()
+        return sn.pop().decode("utf-8")
 
     def get_user_givenName(self, dn):
         """
         Retrieves the 'givenName' attribute of an LDAP user
 
         Args:
-            username (str): The LDAP distinguished name to lookup
+            dn (str): The LDAP distinguished name to lookup
 
         Returns:
             The user's given name attribute
@@ -297,7 +295,23 @@ class LDAPConn(object):
         if not name:
             return None
 
-        return name.pop()
+        return name.pop().decode("utf-8")
+
+    def is_user_enabled(self, dn):
+        """
+        Checks if the LDAP user is enabled, according to the `disabled_filter`.
+        
+        Args:
+            dn (str): The LDAP distinguished name to lookup
+        
+        Returns:
+            True if the user is enabled, False if it is disabled or the user does not exist.
+        """
+        #if dn == "CN=Michael Hoydis,OU=Software Engineering,OU=Departments,OU=Datto,DC=datto,DC=lan":
+        #    # TEST DO NOT COMMIT
+        #    return False
+        results = self.conn.search_s(base=dn, scope=ldap.SCOPE_BASE, filterstr=self.disabled_filter, attrlist=["sn"])
+        return bool(results)
 
     def get_groups_with_wildcard(self):
         """

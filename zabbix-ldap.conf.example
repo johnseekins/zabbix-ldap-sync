@@ -27,6 +27,7 @@ server = http://zabbix.example.org/zabbix/
 username = admin
 password = adminp4ssw0rd
 auth = webform
+disabledgroup = Disabled
 
 [user]
 type = 1

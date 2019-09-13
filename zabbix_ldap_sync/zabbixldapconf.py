@@ -24,11 +24,12 @@ class ZabbixLDAPConf(object):
         self.ldap_lowercase = False
         self.ldap_recursive = False
         self.ldap_wildcard_search =  False
-        self.ldap_skipdisabled = False
+        self.ldap_disabledmode = "disable"
 
         self.zbx_deleteorphans = False
         self.zbx_nocheckcertificate = False
         self.zbx_recursivezbx_recursive = False
+        self.zbx_disabled_group = None
 
 
         try:
@@ -66,6 +67,7 @@ class ZabbixLDAPConf(object):
             self.zbx_username = parser.get('zabbix', 'username')
             self.zbx_password = parser.get('zabbix', 'password')
             self.zbx_auth = parser.get('zabbix', 'auth')
+            self.zbx_disabled_group = parser.get('zabbix', 'disabledgroup', fallback=None)
 
             self.user_opt = self.try_get_section(parser, 'user', {})
 
