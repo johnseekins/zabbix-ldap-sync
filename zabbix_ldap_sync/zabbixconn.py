@@ -334,7 +334,6 @@ class ZabbixConn(object):
         ldap_users = dict()
         ldap_group_members = dict()
         seen_zabbix_users = set()
-        new_users = set()
 
         # Get the ID for the disabled group, if it exists
         if self.disabled_group:
@@ -400,7 +399,7 @@ class ZabbixConn(object):
                     groups=[],
                     media=[],
                 )
-                new_users.add(zabbix_user)
+                zabbix_users[name] = zabbix_user
             else:
                 zabbix_user.set_name(ldap_name, ldap_surname)
 
