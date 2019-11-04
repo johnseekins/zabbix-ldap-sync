@@ -399,7 +399,6 @@ class ZabbixConn(object):
                     surname=ldap_surname,
                     groups=[],
                     media=[],
-                    media_types=[],
                 )
                 new_users.add(zabbix_user)
             else:
