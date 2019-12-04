@@ -367,7 +367,7 @@ class ZabbixConn(object):
                 # Group does not exist, create it
                 group_id = self.create_group(group_name)
                 zabbix_group = Group(id=group_id, name=group_name, members=[])
-                zabbix_groups[group_id] = zabbix_group
+                zabbix_groups[group_name] = zabbix_group
 
             # Get group members in LDAP
             members = self.ldap_conn.get_group_members(group_name)
