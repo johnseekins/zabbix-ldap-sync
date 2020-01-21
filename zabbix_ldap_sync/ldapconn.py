@@ -87,7 +87,7 @@ class LDAPConn(object):
 
         if not result:
             self.logger.info('Unable to find group "%s" with filter "%s", skipping group' % (group, filter))
-            return None
+            return dict()
 
 
         # Get DN for each user in the group
