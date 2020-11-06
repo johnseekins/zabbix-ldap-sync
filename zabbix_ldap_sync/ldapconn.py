@@ -3,7 +3,6 @@ import ldap.filter
 import logging
 
 
-
 class LDAPConn(object):
     """
     LDAP connector class
@@ -64,7 +63,7 @@ class LDAPConn(object):
         Remove referrals from AD query result
 
         """
-        return [i for i in result if i[0] != None]
+        return [i for i in result if i[0] is not None]
 
     def get_group_members(self, group):
         """
@@ -88,7 +87,6 @@ class LDAPConn(object):
         if not result:
             self.logger.info('Unable to find group "%s" with filter "%s", skipping group' % (group, filter))
             return dict()
-
 
         # Get DN for each user in the group
         if self.active_directory:
@@ -128,10 +126,10 @@ class LDAPConn(object):
             # Fill dictionary with usernames and corresponding DNs
             for item in group_members:
                 dn = item[0]
- 
+
                 username = item[1][self.uid_attribute]
                 user = ''.join(username[0].decode('utf-8'))
-            
+
             final_listing[user] = dn
 
         return final_listing
@@ -183,7 +181,7 @@ class LDAPConn(object):
             final_listing[username] = dn
         return final_listing
 
-    def get_groups_with_wildcard(self, groups_wildcard):
+    def _get_groups_with_wildcard(self, groups_wildcard):
         self.logger.info("Search group with wildcard: %s" % groups_wildcard)
 
         filter = self.group_filter % groups_wildcard
@@ -300,16 +298,16 @@ class LDAPConn(object):
     def is_user_enabled(self, dn):
         """
         Checks if the LDAP user is enabled, according to the `disabled_filter`.
-        
+
         Args:
             dn (str): The LDAP distinguished name to lookup
-        
+
         Returns:
             True if the user is enabled, False if it is disabled or the user does not exist.
         """
-        #if dn == "CN=Michael Hoydis,OU=Software Engineering,OU=Departments,OU=Datto,DC=datto,DC=lan":
-        #    # TEST DO NOT COMMIT
-        #    return False
+        # if dn == "CN=Michael Hoydis,OU=Software Engineering,OU=Departments,OU=Datto,DC=datto,DC=lan":
+        #     # TEST DO NOT COMMIT
+        #     return False
         results = self.conn.search_s(base=dn, scope=ldap.SCOPE_BASE, filterstr=self.disabled_filter, attrlist=["sn"])
         return bool(results)
 
@@ -323,7 +321,7 @@ class LDAPConn(object):
         ldap_conn.connect()
 
         for group in self.ldap_groups:
-            groups = ldap_conn.get_groups_with_wildcard(group)
+            groups = ldap_conn._get_groups_with_wildcard(group)
             result_groups = result_groups + groups
 
         if not result_groups:

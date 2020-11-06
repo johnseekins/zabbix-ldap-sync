@@ -29,10 +29,6 @@
 The zabbix-ldap-sync script is used for syncing LDAP users with Zabbix.
 
 """
-import warnings
-import traceback
-import sys
-import os
 import logging
 import argparse
 
@@ -44,34 +40,34 @@ from .ldapconn import LDAPConn
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-v", "--version", action="version", version="%(prog)s 0.1.1",
-        help="Display version and exit")
+                        help="Display version and exit")
     parser.add_argument("-l", "--lowercase", action="store_true",
-        help="Create AD user names as lowercase")
+                        help="Create AD user names as lowercase")
     parser.add_argument("-r", "--recursive", action="store_true",
-        help="Resolves AD group members recursively (i.e. nested groups)")
+                        help="Resolves AD group members recursively (i.e. nested groups)")
     parser.add_argument("-w", "--wildcard-search", action="store_true",
-        help="Search AD group with wildcard (e.g. R.*.Zabbix.*) - TESTED ONLY with Active Directory")
+                        help="Search AD group with wildcard (e.g. R.*.Zabbix.*) - TESTED ONLY with Active Directory")
     parser.add_argument("-d", "--delete-orphans", action="store_true",
-        help="Delete Zabbix users that don't exist in a LDAP group")
+                        help="Delete Zabbix users that don't exist in a LDAP group")
     parser.add_argument("-n", "--no-check-certificate", action="store_true",
-        help="Don't check Zabbix server certificate")
+                        help="Don't check Zabbix server certificate")
     parser.add_argument("--verbose", action="store_true",
-        help="Print debug message from ZabbixAPI")
+                        help="Print debug message from ZabbixAPI")
     parser.add_argument("--dryrun", action="store_true",
-        help="Just simulate zabbix interaction")
+                        help="Just simulate zabbix interaction")
     parser.add_argument("-f", "--file", required=True,
-        help="Configuration file to use")
+                        help="Configuration file to use")
 
     disable_mode = parser.add_mutually_exclusive_group()
     disable_mode.add_argument("-s", "--skip-disabled", action="store_const",
-        dest="disabled_mode", const="delete", default="disable",
-        help="Old version of `--disabled-mode remove-groups`")
+                              dest="disabled_mode", const="delete", default="disable",
+                              help="Old version of `--disabled-mode remove-groups`")
     disable_mode.add_argument("--disabled-mode", choices=["ignore", "remove-groups", "set-disabled"],
-        dest="disabled_mode", default="disable",
-        help="How to handle users disabled in LDAP/AD. `ignore` processes them as usual. `remove-groups` removes all of the managed groups from the user (which may cause them to be orphaned and deleted). `set-disabled` moves them to a disabled group.")
+                              dest="disabled_mode", default="disable",
+                              help="How to handle users disabled in LDAP/AD. `ignore` processes them as usual. `remove-groups` removes all of the managed groups from the user (which may cause them to be orphaned and deleted). `set-disabled` moves them to a disabled group.")
 
     parser.add_argument("--deleted-mode", choices=["ignore", "remove-groups", "set-disabled"],
-        help="How to handle users that exist in Zabbix but not LDAP/AD. Choices and actions are the same as --disabled-mode")
+                        help="How to handle users that exist in Zabbix but not LDAP/AD. Choices and actions are the same as --disabled-mode")
 
     args = parser.parse_args()
 
@@ -99,6 +95,7 @@ def main():
     zabbix_conn.connect()
 
     zabbix_conn.sync_users()
+
 
 if __name__ == '__main__':
     main()

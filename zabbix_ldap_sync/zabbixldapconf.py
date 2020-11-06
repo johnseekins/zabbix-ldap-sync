@@ -23,14 +23,13 @@ class ZabbixLDAPConf(object):
 
         self.ldap_lowercase = False
         self.ldap_recursive = False
-        self.ldap_wildcard_search =  False
+        self.ldap_wildcard_search = False
         self.ldap_disabledmode = "disable"
 
         self.zbx_deleteorphans = False
         self.zbx_nocheckcertificate = False
         self.zbx_recursivezbx_recursive = False
         self.zbx_disabled_group = None
-
 
         try:
             self.ldap_type = self.try_get_item(parser, 'ldap', 'type', None)
@@ -74,7 +73,6 @@ class ZabbixLDAPConf(object):
             self.media_description = self.try_get_item(parser, 'media', 'description', 'Email')
             self.media_opt = self.remove_config_section_items(self.try_get_section(parser, 'media', {}),
                                                               ('description', 'userid'))
-
 
             if self.ldap_type == 'activedirectory':
                 self.ldap_active_directory = True

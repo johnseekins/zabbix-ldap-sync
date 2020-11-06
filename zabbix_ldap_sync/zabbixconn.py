@@ -4,7 +4,7 @@ import string
 import collections
 import re
 
-from pyzabbix import ZabbixAPI, ZabbixAPIException
+from pyzabbix import ZabbixAPI
 
 Group = collections.namedtuple("Group", [
     "id",
@@ -12,12 +12,15 @@ Group = collections.namedtuple("Group", [
     "members",
 ])
 
+
 # dummy ID class for groups "created" during a dry run
 class FakeGroupId:
     def __eq__(self, other):
         return self is other
+
     def __hash__(self):
         return hash(id(self))
+
 
 class User:
     def __init__(self, id, alias, groups, media, name, surname):
@@ -43,7 +46,7 @@ class User:
             self.edited = True
 
     def add_group(self, groupid):
-        if not groupid in self.groups:
+        if groupid not in self.groups:
             self.groups.add(groupid)
             self.edited = True
 
@@ -63,7 +66,7 @@ class User:
         for media in self.media:
             if media["mediatypeid"] == media_type_id:
                 # Only update if things actually changed
-                if any(media[k] != v for k,v in target_entry.items()):
+                if any(media[k] != v for k, v in target_entry.items()):
                     media.update(target_entry)
                     self.edited = True
                     return True
@@ -75,10 +78,13 @@ class User:
 
     def __str__(self):
         return "{} (id: {})".format(self.alias, self.id)
+
     def __eq__(self, other):
         return self.id == other.id
+
     def __hash__(self):
         return hash(self.id)
+
 
 class ZabbixConn(object):
     """
@@ -127,22 +133,19 @@ class ZabbixConn(object):
 
         """
 
-        if self.auth == "webform":
-            self.conn = ZabbixAPI(self.server)
-        elif self.auth == "http":
-            self.conn = ZabbixAPI(self.server, use_authenticate=False)
-            self.conn.session.auth = (self.username, self.password)
-
-        else:
-            raise SystemExit('api auth method not implemented: %s' % self.conn.auth)
+        try:
+            if self.auth == "webform":
+                self.conn = ZabbixAPI(self.server, user=self.username, password=self.password)
+            elif self.auth == "http":
+                self.conn = ZabbixAPI(self.server, use_authenticate=False)
+                self.conn.session.auth = (self.username, self.password)
+            else:
+                raise SystemExit('api auth method not implemented: %s' % self.conn.auth)
+        except Exception as e:
+            raise SystemExit("Cannot log in to Zabbix server: {}".format(e))
 
         if self.nocheckcertificate:
             self.conn.session.verify = False
-
-        try:
-            self.conn.login(self.username, self.password)
-        except ZabbixAPIException as e:
-            raise SystemExit('Cannot login to Zabbix server: %s' % e)
 
         self.logger.info("Connected to Zabbix API Version %s" % self.conn.api_version())
 
@@ -409,38 +412,38 @@ class ZabbixConn(object):
             if not is_enabled and self.disable_mode == "set-disabled":
                 # Not enabled; Replace group with the disabled group
                 self.logger.info("Will move %s (id: %s, disabled in ldap) to disabled group",
-                    zabbix_user.alias, zabbix_user.id)
+                                 zabbix_user.alias, zabbix_user.id)
                 zabbix_user.set_groups((disabled_group_id,))
             elif not is_enabled and self.disable_mode == "remove-groups":
                 # Not enabled; remove all managed groups
                 for zabbix_group in zabbix_groups.values():
                     self.logger.info("Will remove user %s (id: %s, disabled in ldap) from group %s",
-                        zabbix_user.alias, zabbix_user.id, zabbix_group.name)
+                                     zabbix_user.alias, zabbix_user.id, zabbix_group.name)
                     zabbix_user.remove_group(zabbix_group.id)
             else:
                 # Enabled, or not enabled and mode is ignore. Add+remove groups
                 if self.disable_mode == "set-disabled" and disabled_group_id in zabbix_user.groups:
                     self.logger.info("Will remove user %s (id: %s) from disabled group",
-                        zabbix_user.alias, zabbix_user.id)
+                                     zabbix_user.alias, zabbix_user.id)
                     zabbix_user.remove_group(disabled_group_id)
 
                 for group_name in self.ldap_groups:
                     zabbix_group = zabbix_groups[group_name]
                     if name in ldap_group_members[group_name] and zabbix_group.id not in zabbix_user.groups:
                         self.logger.info("Will add user %s (id: %s) to group %s",
-                            zabbix_user.alias, zabbix_user.id, zabbix_group.name)
+                                         zabbix_user.alias, zabbix_user.id, zabbix_group.name)
                         zabbix_user.add_group(zabbix_group.id)
                     if name not in ldap_group_members[group_name] and zabbix_group.id in zabbix_user.groups:
                         self.logger.info("Will remove user %s (id: %s) from group %s",
-                            zabbix_user.alias, zabbix_user.id, zabbix_group.name)
+                                         zabbix_user.alias, zabbix_user.id, zabbix_group.name)
                         zabbix_user.remove_group(zabbix_group.id)
 
             # Update media
-            if self.ldap_media and not (media_only_create and user.id is not None):
+            if self.ldap_media and not (media_only_create and zabbix_user.id is not None):
                 sendto = self.ldap_conn.get_user_media(dn, self.ldap_media)
                 if zabbix_user.set_media(media_type_id, sendto, media_opts):
                     self.logger.info("Will update media of user %s (id: %s)",
-                        zabbix_user.alias, zabbix_user.id)
+                                     zabbix_user.alias, zabbix_user.id)
 
         # Handle users that are not in ldap
         if self.delete_mode != "ignore":
@@ -452,15 +455,15 @@ class ZabbixConn(object):
 
                 if self.delete_mode == "set-disabled":
                     self.logger.info("Will move %s (id: %s, not in ldap) to disabled group",
-                        zabbix_user.alias, zabbix_user.id)
+                                     zabbix_user.alias, zabbix_user.id)
                     zabbix_user.set_groups((disabled_group_id,))
                 elif self.delete_mode == "remove-groups":
                     self.logger.info("Will remove managed groups from %s (id: %s) (not in ldap)",
-                        zabbix_user.alias, zabbix_user.id)
+                                     zabbix_user.alias, zabbix_user.id)
                     for group_name in self.ldap_groups:
                         zabbix_group = zabbix_groups[group_name]
                         self.logger.info("Will remove user %s (id: %s, not in ldap) from group %s",
-                            zabbix_user.alias, zabbix_user.id, zabbix_group.name)
+                                         zabbix_user.alias, zabbix_user.id, zabbix_group.name)
                         zabbix_user.remove_group(zabbix_group.id)
                 else:
                     assert False
@@ -480,7 +483,7 @@ class ZabbixConn(object):
                 self.delete_user(zabbix_user)
             else:
                 self.logger.error("Not updating user %s (id %s); would have removed all groups, but zabbix requires one, and --delete-orphans wasn't specified",
-                    zabbix_user.alias, zabbix_user.alias)
+                                  zabbix_user.alias, zabbix_user.alias)
 
         # for eachGroup in self.ldap_groups:
 
