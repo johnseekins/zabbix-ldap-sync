@@ -134,7 +134,7 @@ class ZabbixConn(object):
         """
 
         if self.auth == "webform":
-            self.conn = ZabbixAPI(self.server, user=self.username, password=self.password)
+            self.conn = ZabbixAPI(self.server)
         elif self.auth == "http":
             self.conn = ZabbixAPI(self.server, use_authenticate=False)
             self.conn.session.auth = (self.username, self.password)
