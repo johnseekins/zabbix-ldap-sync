@@ -340,6 +340,7 @@ class ZabbixConn(object):
         ldap_group_members = dict()
         seen_zabbix_users = set()
 
+        self.logger.info("Configuring LDAP->Zabbix Sync...")
         # Get the ID for the disabled group, if it exists
         if self.disabled_group:
             results = self.conn.usergroup.get(filter={"name": self.disabled_group})
@@ -366,6 +367,7 @@ class ZabbixConn(object):
 
         # Go through each group we manage, create it if it doesn't exist, and get the users
         # that we manage.
+        self.logger.info("Ensuring groups in Zabbix and collecting group membership from LDAP...")
         for group_name in self.ldap_groups:
             zabbix_group = zabbix_groups.get(group_name)
             if not zabbix_group:
@@ -382,6 +384,7 @@ class ZabbixConn(object):
             for name, dn in members.items():
                 ldap_users[name.lower()] = dn
 
+        self.logger.info("Ensuring users from LDAP...")
         # Update/create users that are in ldap
         for name, dn in ldap_users.items():
             is_enabled = self.disable_mode == "ignore" or self.ldap_conn.is_user_enabled(dn)
