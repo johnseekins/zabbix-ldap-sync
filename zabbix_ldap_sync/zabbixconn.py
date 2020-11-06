@@ -4,7 +4,7 @@ import string
 import collections
 import re
 
-from pyzabbix import ZabbixAPI
+from pyzabbix import ZabbixAPI, ZabbixAPIException
 
 Group = collections.namedtuple("Group", [
     "id",
@@ -133,19 +133,21 @@ class ZabbixConn(object):
 
         """
 
-        try:
-            if self.auth == "webform":
-                self.conn = ZabbixAPI(self.server, user=self.username, password=self.password)
-            elif self.auth == "http":
-                self.conn = ZabbixAPI(self.server, use_authenticate=False)
-                self.conn.session.auth = (self.username, self.password)
-            else:
-                raise SystemExit('api auth method not implemented: %s' % self.conn.auth)
-        except Exception as e:
-            raise SystemExit("Cannot log in to Zabbix server: {}".format(e))
+        if self.auth == "webform":
+            self.conn = ZabbixAPI(self.server, user=self.username, password=self.password)
+        elif self.auth == "http":
+            self.conn = ZabbixAPI(self.server, use_authenticate=False)
+            self.conn.session.auth = (self.username, self.password)
+        else:
+            raise SystemExit('api auth method not implemented: %s' % self.conn.auth)
 
         if self.nocheckcertificate:
             self.conn.session.verify = False
+
+        try:
+            self.conn.login(self.username, self.password)
+        except ZabbixAPIException as e:
+            raise SystemExit('Cannot login to Zabbix server: %s' % e)
 
         self.logger.info("Connected to Zabbix API Version %s" % self.conn.api_version())
 
