@@ -387,6 +387,7 @@ class ZabbixConn(object):
         self.logger.info("Ensuring users from LDAP...")
         # Update/create users that are in ldap
         for name, dn in ldap_users.items():
+            self.logger.debug("Working on {}".format(name))
             is_enabled = self.disable_mode == "ignore" or self.ldap_conn.is_user_enabled(dn)
 
             ldap_name = self.ldap_conn.get_user_givenName(dn) or ""
